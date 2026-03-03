@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swagger UI (Python Refactored)</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+
+<div class="topbar">
+    <div class="wrapper">
+        <div class="topbar-wrapper">
+            <a class="link" href="#">
+                <img height="40" src="https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png" alt="Logo">
+                <span>Swagger UI (Python)</span>
+            </a>
+            <form class="download-url-wrapper" action="/load-spec" method="POST">
+                <input class="download-url-input" type="text" name="url" placeholder="请输入 OpenAPI 规范 URL" value="{{ url if url else '' }}" required>
+                <button class="download-url-button" type="submit">浏览</button>
+            </form>
+            <button class="settings-button" onclick="openScannerModal()" title="API 扫描器">
+                <i class="fas fa-bug"></i>
+            </button>
+            <button class="settings-button" onclick="openSettingsModal()" title="全局设置">
+                <i class="fas fa-cog"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Scanner Modal -->
+<div id="scannerModal" class="modal">
+    <div class="modal-content" style="width: 90%; max-width: 1200px; height: 90vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+            <h2><i class="fas fa-bug" style="color: #62a03f; margin-right: 10px;"></i>API 扫描器</h2>
+            <span class="close" onclick="closeScannerModal()">&times;</span>
+        </div>
+        <div class="modal-body" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #f9f9f9;">
+            
+            <!-- Dashboard Controls -->
+            <div class="scanner-dashboard">
+                <div class="scanner-card" style="flex: 2;">
+                    <h4>控制面板</h4>
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <div class="scanner-actions">
+                            <button id="btnStartScan" class="btn-scan-start" onclick="startScanner()">
+                                <i class="fas fa-play"></i> 开始扫描
+                            </button>
+                            <button id="btnStopScan" class="btn-scan-stop" onclick="stopScanner()" disabled>
+                                <i class="fas fa-stop"></i> 停止
+                            </button>
+                        </div>
+                        <div style="flex: 1; margin-left: 20px;">
+                             <label style="cursor: pointer; display: flex; align-items: center; font-size: 13px; color: #555;">
+                                <input type="checkbox" id="scanUseEmptyBody" style="margin-right: 8px;"> 
+                                POST/PUT 使用空 Body {}
+                            </label>
+                            <div id="scanStatus" style="margin-top: 5px; font-weight: bold; color: #62a03f; font-size: 14px; min-height: 20px;"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="scanner-card" style="flex: 1;">
+                    <h4>统计信息</h4>
+                    <div class="scanner-stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-value" id="statTotal">0</span>
+                            <span class="stat-label">总数</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="statSuccess" style="color: #28a745;">0</span>
+                            <span class="stat-label">成功</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="statFailed" style="color: #dc3545;">0</span>
+                            <span class="stat-label">失败</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="scanner-table-container">
+                <div style="overflow-y: auto; flex: 1;">
+                    <table class="scanner-table">
+                        <thead style="position: sticky; top: 0; z-index: 10;">
+                            <tr>
+                                <th style="width: 90px;">方法</th>
+                                <th>路径</th>
+                                <th style="width: 100px; cursor: pointer;" onclick="sortHistory('status')">
+                                    状态 <i id="sortIcon-status" class="fas fa-sort"></i>
+                                </th>
+                                <th style="width: 100px; cursor: pointer;" onclick="sortHistory('size')">
+                                    大小 <i id="sortIcon-size" class="fas fa-sort"></i>
+                                </th>
+                                <th style="width: 100px;">耗时</th>
+                                <th style="width: 80px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scanHistoryBody">
+                            <!-- Rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Response Details Modal (Reused for Scanner) -->
+<div id="scanDetailsModal" class="modal" style="z-index: 1001;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>请求详情</h2>
+            <span class="close" onclick="document.getElementById('scanDetailsModal').style.display='none'">&times;</span>
+        </div>
+        <div class="modal-body">
+            <h4>请求</h4>
+            <pre class="microlight" id="scanDetailRequest"></pre>
+            <h4>响应</h4>
+            <pre class="microlight" id="scanDetailResponse"></pre>
+        </div>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>全局设置</h2>
+            <span class="close" onclick="closeSettingsModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="globalBaseUrl">全局 Base URL (覆盖文档默认 URL)</label>
+                <input type="text" id="globalBaseUrl" class="full-width-input" placeholder="http://api.example.com/v1">
+            </div>
+            <div class="form-group">
+                <label for="globalProxy">全局代理 URL (例如: http://127.0.0.1:8080)</label>
+                <input type="text" id="globalProxy" class="full-width-input" placeholder="http://127.0.0.1:8080">
+            </div>
+            <div class="form-group">
+                <label>全局 Headers (JSON)</label>
+                <div id="globalHeadersContainer">
+                    <textarea id="globalHeaders" class="full-width-input" rows="5" placeholder='{"Authorization": "Bearer token", "X-Custom": "Value"}'></textarea>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn execute" onclick="saveSettings()">保存设置</button>
+        </div>
+    </div>
+</div>
+
+<div class="main-container">
+    {% if error %}
+    <div class="error-box">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    {% if spec %}
+    <div class="info-section">
+        <h2 class="title">{{ spec.info.title }} <small class="version">{{ spec.info.version }}</small></h2>
+        <div class="description">{{ spec.info.description }}</div>
+        <div class="base-url">
+            [ Base URL: <span id="baseUrl">{{ spec.base_url }}</span> ]
+        </div>
+    </div>
+
+    <div class="op-block-container">
+        {% for tag in spec.tags %}
+        <div class="op-block-tag-section">
+            <h3 class="op-block-tag" onclick="toggleTag('tag-{{ loop.index }}')">
+                <a class="nostyle">
+                    <span>{{ tag.name }}</span>
+                </a>
+                <small>{{ tag.description }}</small>
+                <button class="expand-operation" title="收起">
+                    <i class="fas fa-chevron-down"></i>
+                </button>
+            </h3>
+
+            <div class="op-block-tag-content" id="tag-{{ loop.index }}">
+                {% for op in tag.operations %}
+                <div class="op-block op-block-{{ op.method|lower }}" id="op-{{ op.operationId }}">
+                    <div class="op-block-summary" onclick="toggleOp('op-{{ op.operationId }}')">
+                        <span class="op-block-summary-method">{{ op.method }}</span>
+                        <span class="op-block-summary-path">
+                            <a class="nostyle"><span>{{ op.path }}</span></a>
+                        </span>
+                        <div class="op-block-summary-description">{{ op.summary }}</div>
+                        <button class="authorization__btn" style="display: none;">
+                            <i class="fas fa-unlock"></i>
+                        </button>
+                    </div>
+                    
+                    <div class="op-block-body" style="display: none;">
+                        <div class="op-block-section-header">
+                            <h4>描述</h4>
+                            <div class="op-block-description-wrapper">
+                                <p>{{ op.description }}</p>
+                            </div>
+                        </div>
+
+                        <div class="op-block-section-header">
+                            <h4>参数</h4>
+                        </div>
+                        
+                        <div class="parameters-container">
+                            {% if op.parameters %}
+                            <table class="parameters">
+                                <thead>
+                                    <tr>
+                                        <th>名称</th>
+                                        <th>描述</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for param in op.parameters %}
+                                    <tr class="parameter-row" data-param-name="{{ param.name }}" data-param-in="{{ param.in }}">
+                                        <td class="parameters-col_name">
+                                            <div class="parameter__name required">
+                                                {{ param.name }}
+                                                {% if param.required %}
+                                                <span style="color: red;">*</span>
+                                                {% endif %}
+                                            </div>
+                                            <div class="parameter__type">{{ param.in }}</div>
+                                            <div class="parameter__type">{{ param.type or param.schema.type }}</div>
+                                        </td>
+                                        <td class="parameters-col_description">
+                                            {% if (param.in == 'formData' and param.type == 'file') or (param.schema and param.schema.format == 'binary') %}
+                                            <input type="file" class="parameter__input" 
+                                                   data-name="{{ param.name }}" data-in="{{ param.in }}"
+                                                   {% if param.required %}required{% endif %}>
+                                            {% else %}
+                                            <input type="text" class="parameter__input" placeholder="{{ param.description }}" 
+                                                   data-name="{{ param.name }}" data-in="{{ param.in }}"
+                                                   {% if param.required %}required{% endif %}>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% else %}
+                            <div class="op-block-section-header">无参数</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Request Body Handling -->
+                        {% if op.requestBody and op.requestBody.content and 'multipart/form-data' in op.requestBody.content %}
+                        <div class="op-block-section-header">
+                            <h4>请求体 (Multipart/Form-Data)</h4>
+                        </div>
+                        <div class="parameters-container">
+                            <table class="parameters">
+                                <thead>
+                                    <tr>
+                                        <th>名称</th>
+                                        <th>描述</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% set props = op.requestBody.content['multipart/form-data'].schema.properties %}
+                                    {% for prop_name, prop_schema in props.items() %}
+                                    <tr class="parameter-row">
+                                        <td class="parameters-col_name">
+                                            <div class="parameter__name">{{ prop_name }}</div>
+                                            <div class="parameter__type">{{ prop_schema.type }}</div>
+                                            {% if prop_schema.format %}
+                                            <div class="parameter__type">({{ prop_schema.format }})</div>
+                                            {% endif %}
+                                        </td>
+                                        <td class="parameters-col_description">
+                                            {% if prop_schema.format == 'binary' %}
+                                            <input type="file" class="parameter__input" data-name="{{ prop_name }}" data-in="formData">
+                                            {% else %}
+                                            <input type="text" class="parameter__input" data-name="{{ prop_name }}" data-in="formData">
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% elif op.requestBody or op.body_param %}
+                        <div class="op-block-section-header">
+                            <h4>请求体</h4>
+                        </div>
+                        <div class="body-param-container">
+                            <textarea class="body-param__text" rows="10" placeholder="{JSON Body}">{{ op.body_example if op.body_example else '' }}</textarea>
+                        </div>
+                        {% endif %}
+
+                        <div class="execute-wrapper">
+                            <button class="btn execute op-block-control__btn" onclick="executeRequest('{{ op.method }}', '{{ op.path }}', '{{ op.operationId }}')">执行</button>
+                        </div>
+
+                        <div class="responses-wrapper" style="display: none;" id="resp-{{ op.operationId }}">
+                            <div class="op-block-section-header">
+                                <h4>服务器响应</h4>
+                            </div>
+                            <div class="response-col_status" id="resp-status-{{ op.operationId }}"></div>
+                            <div class="response-col_description">
+                                <h5>响应体</h5>
+                                <pre class="microlight" id="resp-body-{{ op.operationId }}"></pre>
+                                <h5>响应头</h5>
+                                <pre class="microlight" id="resp-headers-{{ op.operationId }}"></pre>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    // Inject full spec for scanner usage
+    const uiSpec = {{ spec | tojson | safe if spec else '{}' }};
+</script>
+<script src="/static/js/script.js"></script>
+</body>
+</html>

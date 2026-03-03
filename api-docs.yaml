@@ -1,0 +1,809 @@
+swagger: "2.0"
+info:
+  title: "示例 API 文档"
+  description: "包含各种 HTTP 请求方法的完整示例"
+  version: "1.0.0"
+  contact:
+    name: "API 支持团队"
+    email: "support@example.com"
+    url: "https://api.example.com"
+  license:
+    name: "MIT"
+    url: "https://opensource.org/licenses/MIT"
+host: "api.example.com"
+basePath: "/v1"
+schemes:
+  - "https"
+  - "http"
+consumes:
+  - "application/json"
+produces:
+  - "application/json"
+securityDefinitions:
+  BearerAuth:
+    type: "apiKey"
+    name: "Authorization"
+    in: "header"
+    description: "请在此处输入 Bearer Token，例如：Bearer {token}"
+  ApiKeyAuth:
+    type: "apiKey"
+    name: "X-API-Key"
+    in: "header"
+    description: "API Key 认证"
+
+paths:
+  # 1. GET 请求示例 - 查询数据
+  /users:
+    get:
+      tags:
+        - "用户管理"
+      summary: "获取用户列表"
+      description: "获取系统中的所有用户列表，支持分页、筛选和排序"
+      operationId: "getUsers"
+      parameters:
+        - name: "page"
+          in: "query"
+          description: "页码"
+          required: false
+          type: "integer"
+          default: 1
+          minimum: 1
+        - name: "limit"
+          in: "query"
+          description: "每页数量"
+          required: false
+          type: "integer"
+          default: 20
+          maximum: 100
+        - name: "sortBy"
+          in: "query"
+          description: "排序字段"
+          required: false
+          type: "string"
+          enum:
+            - "name"
+            - "email"
+            - "createdAt"
+            - "updatedAt"
+        - name: "order"
+          in: "query"
+          description: "排序方向"
+          required: false
+          type: "string"
+          enum:
+            - "asc"
+            - "desc"
+          default: "asc"
+        - name: "status"
+          in: "query"
+          description: "用户状态筛选"
+          required: false
+          type: "string"
+          enum:
+            - "active"
+            - "inactive"
+            - "suspended"
+        - name: "search"
+          in: "query"
+          description: "关键词搜索"
+          required: false
+          type: "string"
+      responses:
+        200:
+          description: "成功获取用户列表"
+          schema:
+            $ref: "#/definitions/UserListResponse"
+        400:
+          description: "请求参数错误"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        401:
+          description: "未授权访问"
+        500:
+          description: "服务器内部错误"
+      security:
+        - BearerAuth: []
+
+  # 2. GET 请求示例 - 路径参数
+  /users/{userId}:
+    get:
+      tags:
+        - "用户管理"
+      summary: "获取单个用户详情"
+      description: "根据用户ID获取用户详细信息"
+      operationId: "getUserById"
+      parameters:
+        - name: "userId"
+          in: "path"
+          description: "用户ID"
+          required: true
+          type: "string"
+          format: "uuid"
+      responses:
+        200:
+          description: "成功获取用户信息"
+          schema:
+            $ref: "#/definitions/User"
+        404:
+          description: "用户不存在"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        500:
+          description: "服务器内部错误"
+      security:
+        - BearerAuth: []
+
+  # 3. POST 请求示例 - 创建资源
+  /users:
+    post:
+      tags:
+        - "用户管理"
+      summary: "创建新用户"
+      description: "创建新的用户账户"
+      operationId: "createUser"
+      parameters:
+        - name: "body"
+          in: "body"
+          description: "用户信息"
+          required: true
+          schema:
+            $ref: "#/definitions/CreateUserRequest"
+      responses:
+        201:
+          description: "用户创建成功"
+          schema:
+            $ref: "#/definitions/User"
+          headers:
+            Location:
+              type: "string"
+              description: "新创建用户的URL"
+        400:
+          description: "请求参数错误"
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        409:
+          description: "用户已存在"
+        422:
+          description: "参数验证失败"
+          schema:
+            $ref: "#/definitions/ValidationErrorResponse"
+      security:
+        - ApiKeyAuth: []
+
+  # 4. PUT 请求示例 - 完整更新资源
+  /users/{userId}:
+    put:
+      tags:
+        - "用户管理"
+      summary: "更新用户信息"
+      description: "完整更新用户的所有信息"
+      operationId: "updateUser"
+      parameters:
+        - name: "userId"
+          in: "path"
+          description: "用户ID"
+          required: true
+          type: "string"
+          format: "uuid"
+        - name: "body"
+          in: "body"
+          description: "用户更新信息"
+          required: true
+          schema:
+            $ref: "#/definitions/UpdateUserRequest"
+      responses:
+        200:
+          description: "用户更新成功"
+          schema:
+            $ref: "#/definitions/User"
+        400:
+          description: "请求参数错误"
+        404:
+          description: "用户不存在"
+        422:
+          description: "参数验证失败"
+      security:
+        - BearerAuth: []
+
+  # 5. PATCH 请求示例 - 部分更新资源
+  /users/{userId}:
+    patch:
+      tags:
+        - "用户管理"
+      summary: "部分更新用户信息"
+      description: "只更新用户的部分信息"
+      operationId: "patchUser"
+      parameters:
+        - name: "userId"
+          in: "path"
+          description: "用户ID"
+          required: true
+          type: "string"
+          format: "uuid"
+        - name: "body"
+          in: "body"
+          description: "需要更新的字段"
+          required: true
+          schema:
+            $ref: "#/definitions/PatchUserRequest"
+      responses:
+        200:
+          description: "用户更新成功"
+          schema:
+            $ref: "#/definitions/User"
+        400:
+          description: "请求参数错误"
+        404:
+          description: "用户不存在"
+        422:
+          description: "参数验证失败"
+      security:
+        - BearerAuth: []
+
+  # 6. DELETE 请求示例
+  /users/{userId}:
+    delete:
+      tags:
+        - "用户管理"
+      summary: "删除用户"
+      description: "根据用户ID删除用户"
+      operationId: "deleteUser"
+      parameters:
+        - name: "userId"
+          in: "path"
+          description: "用户ID"
+          required: true
+          type: "string"
+          format: "uuid"
+        - name: "force"
+          in: "query"
+          description: "是否强制删除"
+          required: false
+          type: "boolean"
+          default: false
+      responses:
+        204:
+          description: "用户删除成功"
+        404:
+          description: "用户不存在"
+        409:
+          description: "用户有关联数据，无法删除"
+      security:
+        - BearerAuth: []
+
+  # 7. 文件上传示例
+  /users/{userId}/avatar:
+    post:
+      tags:
+        - "用户管理"
+      summary: "上传用户头像"
+      description: "上传用户头像图片"
+      operationId: "uploadAvatar"
+      consumes:
+        - "multipart/form-data"
+      parameters:
+        - name: "userId"
+          in: "path"
+          description: "用户ID"
+          required: true
+          type: "string"
+          format: "uuid"
+        - name: "avatar"
+          in: "formData"
+          description: "头像图片文件"
+          required: true
+          type: "file"
+        - name: "description"
+          in: "formData"
+          description: "图片描述"
+          required: false
+          type: "string"
+      responses:
+        200:
+          description: "头像上传成功"
+          schema:
+            $ref: "#/definitions/UploadResponse"
+        400:
+          description: "文件格式不支持或文件过大"
+        404:
+          description: "用户不存在"
+      security:
+        - BearerAuth: []
+
+  # 8. 复杂查询参数示例
+  /products:
+    get:
+      tags:
+        - "产品管理"
+      summary: "搜索产品"
+      description: "根据多种条件搜索产品"
+      operationId: "searchProducts"
+      parameters:
+        - name: "categories"
+          in: "query"
+          description: "产品分类"
+          required: false
+          type: "array"
+          items:
+            type: "string"
+          collectionFormat: "multi"
+        - name: "price_min"
+          in: "query"
+          description: "最低价格"
+          required: false
+          type: "number"
+          format: "float"
+        - name: "price_max"
+          in: "query"
+          description: "最高价格"
+          required: false
+          type: "number"
+          format: "float"
+        - name: "in_stock"
+          in: "query"
+          description: "是否有库存"
+          required: false
+          type: "boolean"
+        - name: "created_after"
+          in: "query"
+          description: "创建时间之后"
+          required: false
+          type: "string"
+          format: "date-time"
+        - name: "tags"
+          in: "query"
+          description: "产品标签"
+          required: false
+          type: "array"
+          items:
+            type: "string"
+          collectionFormat: "csv"
+      responses:
+        200:
+          description: "搜索成功"
+          schema:
+            $ref: "#/definitions/ProductListResponse"
+      security:
+        - ApiKeyAuth: []
+
+  # 9. Header 参数示例
+  /system/info:
+    get:
+      tags:
+        - "系统信息"
+      summary: "获取系统信息"
+      description: "获取系统相关信息，需要自定义Header"
+      operationId: "getSystemInfo"
+      parameters:
+        - name: "X-Request-ID"
+          in: "header"
+          description: "请求ID，用于追踪"
+          required: true
+          type: "string"
+        - name: "X-Client-Version"
+          in: "header"
+          description: "客户端版本号"
+          required: false
+          type: "string"
+      responses:
+        200:
+          description: "成功获取系统信息"
+          schema:
+            $ref: "#/definitions/SystemInfo"
+        400:
+          description: "缺少必要的Header"
+
+  # 10. 身份验证示例
+  /auth/login:
+    post:
+      tags:
+        - "身份验证"
+      summary: "用户登录"
+      description: "用户登录获取访问令牌"
+      operationId: "login"
+      parameters:
+        - name: "body"
+          in: "body"
+          description: "登录凭据"
+          required: true
+          schema:
+            $ref: "#/definitions/LoginRequest"
+      responses:
+        200:
+          description: "登录成功"
+          schema:
+            $ref: "#/definitions/LoginResponse"
+        401:
+          description: "用户名或密码错误"
+        429:
+          description: "登录尝试次数过多"
+
+  # 11. 批量操作示例
+  /users/batch:
+    post:
+      tags:
+        - "批量操作"
+      summary: "批量创建用户"
+      description: "一次创建多个用户"
+      operationId: "batchCreateUsers"
+      parameters:
+        - name: "body"
+          in: "body"
+          description: "用户列表"
+          required: true
+          schema:
+            $ref: "#/definitions/BatchCreateUsersRequest"
+      responses:
+        201:
+          description: "批量创建成功"
+          schema:
+            $ref: "#/definitions/BatchResponse"
+
+# 数据模型定义
+definitions:
+  # 用户相关模型
+  User:
+    type: "object"
+    required:
+      - "id"
+      - "username"
+      - "email"
+      - "status"
+    properties:
+      id:
+        type: "string"
+        format: "uuid"
+        description: "用户唯一标识"
+      username:
+        type: "string"
+        description: "用户名"
+        minLength: 3
+        maxLength: 50
+      email:
+        type: "string"
+        format: "email"
+        description: "邮箱地址"
+      fullName:
+        type: "string"
+        description: "全名"
+      avatar:
+        type: "string"
+        description: "头像URL"
+      status:
+        type: "string"
+        enum:
+          - "active"
+          - "inactive"
+          - "suspended"
+        description: "用户状态"
+      createdAt:
+        type: "string"
+        format: "date-time"
+        description: "创建时间"
+      updatedAt:
+        type: "string"
+        format: "date-time"
+        description: "更新时间"
+
+  CreateUserRequest:
+    type: "object"
+    required:
+      - "username"
+      - "email"
+      - "password"
+    properties:
+      username:
+        type: "string"
+        description: "用户名"
+        minLength: 3
+        maxLength: 50
+      email:
+        type: "string"
+        format: "email"
+        description: "邮箱地址"
+      password:
+        type: "string"
+        format: "password"
+        description: "密码"
+        minLength: 8
+      fullName:
+        type: "string"
+        description: "全名"
+      role:
+        type: "string"
+        enum:
+          - "user"
+          - "admin"
+          - "moderator"
+        default: "user"
+
+  UpdateUserRequest:
+    type: "object"
+    properties:
+      username:
+        type: "string"
+        description: "用户名"
+        minLength: 3
+        maxLength: 50
+      email:
+        type: "string"
+        format: "email"
+        description: "邮箱地址"
+      fullName:
+        type: "string"
+        description: "全名"
+      status:
+        type: "string"
+        enum:
+          - "active"
+          - "inactive"
+          - "suspended"
+
+  PatchUserRequest:
+    type: "object"
+    properties:
+      username:
+        type: "string"
+        description: "用户名"
+        minLength: 3
+        maxLength: 50
+      email:
+        type: "string"
+        format: "email"
+        description: "邮箱地址"
+      fullName:
+        type: "string"
+        description: "全名"
+      status:
+        type: "string"
+        enum:
+          - "active"
+          - "inactive"
+          - "suspended"
+
+  # 响应模型
+  UserListResponse:
+    type: "object"
+    properties:
+      data:
+        type: "array"
+        items:
+          $ref: "#/definitions/User"
+      pagination:
+        type: "object"
+        properties:
+          total:
+            type: "integer"
+            description: "总记录数"
+          page:
+            type: "integer"
+            description: "当前页码"
+          limit:
+            type: "integer"
+            description: "每页数量"
+          totalPages:
+            type: "integer"
+            description: "总页数"
+
+  # 错误响应模型
+  ErrorResponse:
+    type: "object"
+    required:
+      - "error"
+      - "message"
+    properties:
+      error:
+        type: "string"
+        description: "错误代码"
+      message:
+        type: "string"
+        description: "错误信息"
+      details:
+        type: "object"
+        description: "错误详情"
+      timestamp:
+        type: "string"
+        format: "date-time"
+        description: "错误发生时间"
+
+  ValidationErrorResponse:
+    type: "object"
+    required:
+      - "error"
+      - "message"
+      - "validationErrors"
+    properties:
+      error:
+        type: "string"
+        description: "错误代码"
+      message:
+        type: "string"
+        description: "错误信息"
+      validationErrors:
+        type: "array"
+        items:
+          type: "object"
+          properties:
+            field:
+              type: "string"
+              description: "验证失败的字段"
+            message:
+              type: "string"
+              description: "验证失败的具体信息"
+
+  # 文件上传响应
+  UploadResponse:
+    type: "object"
+    properties:
+      filename:
+        type: "string"
+        description: "上传的文件名"
+      url:
+        type: "string"
+        description: "文件访问URL"
+      size:
+        type: "integer"
+        description: "文件大小（字节）"
+      mimeType:
+        type: "string"
+        description: "文件MIME类型"
+
+  # 产品相关模型
+  ProductListResponse:
+    type: "object"
+    properties:
+      products:
+        type: "array"
+        items:
+          $ref: "#/definitions/Product"
+      total:
+        type: "integer"
+        description: "搜索结果总数"
+
+  Product:
+    type: "object"
+    properties:
+      id:
+        type: "string"
+        description: "产品ID"
+      name:
+        type: "string"
+        description: "产品名称"
+      price:
+        type: "number"
+        format: "float"
+        description: "产品价格"
+      category:
+        type: "string"
+        description: "产品分类"
+      inStock:
+        type: "boolean"
+        description: "是否有库存"
+
+  # 系统信息模型
+  SystemInfo:
+    type: "object"
+    properties:
+      version:
+        type: "string"
+        description: "API版本"
+      uptime:
+        type: "integer"
+        description: "系统运行时间（秒）"
+      environment:
+        type: "string"
+        description: "运行环境"
+      timestamp:
+        type: "string"
+        format: "date-time"
+        description: "当前时间"
+
+  # 身份验证模型
+  LoginRequest:
+    type: "object"
+    required:
+      - "username"
+      - "password"
+    properties:
+      username:
+        type: "string"
+        description: "用户名"
+      password:
+        type: "string"
+        format: "password"
+        description: "密码"
+      rememberMe:
+        type: "boolean"
+        description: "是否记住登录状态"
+        default: false
+
+  LoginResponse:
+    type: "object"
+    properties:
+      accessToken:
+        type: "string"
+        description: "访问令牌"
+      refreshToken:
+        type: "string"
+        description: "刷新令牌"
+      tokenType:
+        type: "string"
+        default: "Bearer"
+      expiresIn:
+        type: "integer"
+        description: "令牌过期时间（秒）"
+      user:
+        $ref: "#/definitions/User"
+
+  # 批量操作模型
+  BatchCreateUsersRequest:
+    type: "object"
+    required:
+      - "users"
+    properties:
+      users:
+        type: "array"
+        items:
+          $ref: "#/definitions/CreateUserRequest"
+        maxItems: 100
+        description: "用户列表"
+
+  BatchResponse:
+    type: "object"
+    properties:
+      total:
+        type: "integer"
+        description: "总操作数"
+      success:
+        type: "integer"
+        description: "成功数"
+      failed:
+        type: "integer"
+        description: "失败数"
+      results:
+        type: "array"
+        items:
+          type: "object"
+          properties:
+            id:
+              type: "string"
+              description: "记录ID"
+            status:
+              type: "string"
+              enum:
+                - "success"
+                - "failed"
+            message:
+              type: "string"
+              description: "处理结果信息"
+
+# 全局参数（可选）
+parameters:
+  PaginationParams:
+    in: "query"
+    name: "pagination"
+    schema:
+      type: "object"
+      properties:
+        page:
+          type: "integer"
+          default: 1
+        limit:
+          type: "integer"
+          default: 20
+    description: "分页参数"
+
+# 响应定义（可复用）
+responses:
+  NotFound:
+    description: "资源不存在"
+    schema:
+      $ref: "#/definitions/ErrorResponse"
+  Unauthorized:
+    description: "未授权访问"
+    schema:
+      $ref: "#/definitions/ErrorResponse"
+  BadRequest:
+    description: "请求参数错误"
+    schema:
+      $ref: "#/definitions/ErrorResponse"
