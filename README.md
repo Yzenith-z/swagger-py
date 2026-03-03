@@ -86,6 +86,14 @@ fastapi_app/
 │   └── js/
 │       └── script.js    # 前端逻辑 (扫描器、排序、UI交互)
 └── templates/
+
+## 截图
+<img width="2494" height="1472" alt="image" src="https://github.com/user-attachments/assets/a529ad4d-1375-46a2-8346-d3c755db8f6d" />
+<img width="2480" height="1486" alt="image" src="https://github.com/user-attachments/assets/fe1170f4-6ef8-4df6-9829-466c44af8d2b" />
+<img width="2466" height="1396" alt="image" src="https://github.com/user-attachments/assets/13d015b5-1dc4-40ac-ba78-13b48f28ec4c" />
+
+
+
     └── index.html       # 主页面模板
 ```
 
